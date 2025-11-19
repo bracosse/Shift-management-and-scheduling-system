@@ -1,0 +1,245 @@
+import sqlite3
+from datetime import datetime
+from dateutil.relativedelta import relativedelta  # requires `pip install python-dateutil`
+
+ROLE_RATES = {
+    1: 1.0,  # Manager
+    2: 1.0,  # HR
+    3: 1.0,  # Team Leader
+    4: 1.0,   # Employee
+}
+
+# Function to reset the Employees table and auto-increment counter
+def reset_employees_table():
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM Employees;")
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='Employees';")
+    conn.commit()
+    conn.close()
+    print("All employees have been deleted and the ID counter has been reset.")
+
+# Function to add a role
+def add_role(role_name):
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO Roles (RoleName) VALUES (?)", (role_name,))
+    conn.commit()
+    conn.close()
+
+# Function to add an employee with role limit checks
+def add_employee(name, role_id, start_date, end_date, nationality):
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+
+    if role_id == 1:
+        cursor.execute("SELECT COUNT(*) FROM Employees WHERE RoleID = 1")
+        if cursor.fetchone()[0] >= 1:
+            print("The company is not recruiting for Manager currently.")
+            conn.close()
+            return
+
+    if role_id == 2:
+        cursor.execute("SELECT COUNT(*) FROM Employees WHERE RoleID = 2")
+        if cursor.fetchone()[0] >= 2:
+            print("The company is not recruiting for HR currently.")
+            conn.close()
+            return
+
+    cursor.execute('''
+    SELECT * FROM Employees WHERE Name = ? AND Nationality = ? AND RoleID = ?
+    ''', (name, nationality, role_id))
+    if cursor.fetchone():
+        print(f"Employee {name} already exists in the database.")
+    else:
+        cursor.execute('''
+        INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (name, role_id, start_date, end_date, nationality))
+        conn.commit()
+        print(f"Employee {name} added successfully.")
+    
+    conn.close()
+
+# Function to get all employees with their role names
+def get_employees():
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT Employees.EmployeeID, Employees.Name, Roles.RoleName, Employees.StartDate, Employees.EndDate, Employees.Nationality
+    FROM Employees
+    JOIN Roles ON Employees.RoleID = Roles.RoleID
+    ''')
+    employees = cursor.fetchall()
+    conn.close()
+    return employees
+
+# Function to show employee list
+def show_employee_list():
+    print("\nEmployee List:")
+    employees = get_employees()
+    if employees:
+        print(f"{'ID':<5}{'Name':<20}{'Role':<15}{'Start Date':<12}{'End Date':<12}{'Nationality':<12}")
+        print("-" * 75)
+        for emp in employees:
+            print(f"{emp[0]:<5}{emp[1]:<20}{emp[2]:<15}{emp[3]:<12}{emp[4]:<12}{emp[5]:<12}")
+    else:
+        print("No employees found.")
+
+# Function to modify employee data
+def modify_employee_data():
+    employee_id = int(input("\nEnter Employee ID to modify: "))
+    new_name = input("Enter new name: ")
+    new_role_id = int(input("Enter new role ID: "))
+    new_start_date = input("Enter new start date (YYYY-MM-DD): ")
+    new_end_date = input("Enter new end date (YYYY-MM-DD): ")
+    new_nationality = input("Enter new nationality: ")
+
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+    UPDATE Employees
+    SET Name = ?, RoleID = ?, StartDate = ?, EndDate = ?, Nationality = ?
+    WHERE EmployeeID = ?
+    ''', (new_name, new_role_id, new_start_date, new_end_date, new_nationality, employee_id))
+
+    conn.commit()
+    conn.close()
+    print(f"Employee {employee_id} data updated successfully.")
+
+# Function to delete an employee
+def delete_employee():
+    employee_id = int(input("\nEnter Employee ID to delete: "))
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM Employees WHERE EmployeeID = ?", (employee_id,))
+    conn.commit()
+    conn.close()
+    print(f"Employee {employee_id} deleted successfully.")
+
+# Function to calculate and display holiday balance
+# Function to calculate and update the holiday balance for an employee
+def calculate_days(start, end):
+    start_date = datetime.strptime(start, "%Y-%m-%d")
+    end_date = datetime.strptime(end, "%Y-%m-%d")
+    delta = end_date - start_date
+    return delta.days + 1  # Including the end day
+def calculate_holiday_balance(employee_id):
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+
+    # Get the current year
+    current_year = datetime.now().year
+    
+    # Get all employees
+    cursor.execute('''
+    SELECT EmployeeID, RoleID, StartDate, EndDate FROM Employees
+    ''')
+    employees = cursor.fetchall()
+
+    # Loop through all employees and calculate holiday balance
+    for emp in employees:
+        employee_id, role_id, start_str, end_str = emp
+        start_date = datetime.strptime(start_str, "%Y-%m-%d")
+        
+        # Determine the end date for the calculation: it is the minimum of the contract end date or the end of the current year
+        end_date = datetime.strptime(end_str, "%Y-%m-%d") if end_str else datetime(current_year, 12, 31)
+
+        # Only calculate holidays for the current year
+        if start_date.year > current_year or end_date.year < current_year:
+            continue  # Skip employees whose contracts are outside the current year
+
+        # Ensure the start and end dates are within the current year
+        start_date = max(start_date, datetime(current_year, 1, 1))
+        end_date = min(end_date, datetime(current_year, 12, 31))
+
+        # Calculate the number of months worked within the current year
+        delta = relativedelta(end_date, start_date)
+        months_worked = delta.years * 12 + delta.months
+        if end_date.day >= start_date.day:
+            months_worked += 1
+
+        # Calculate entitled holidays (1 day per month)
+        entitled_holidays = months_worked * ROLE_RATES.get(role_id, 0)
+
+        # Fetch holidays taken by this employee
+        cursor.execute('''
+        SELECT HolidayStartDate, HolidayEndDate FROM Holidays
+        WHERE EmployeeID = ? AND Status IN ('Approved', 'Pending')
+        ''', (employee_id,))
+        holidays_taken = cursor.fetchall()
+
+        # Calculate used holidays
+        used_holidays = sum(calculate_days(start, end) for start, end in holidays_taken)
+
+        # Calculate balance
+        holiday_balance = entitled_holidays - used_holidays
+
+        # Update the Employee's Holiday Balance
+        cursor.execute('''
+        UPDATE Employees SET HolidayBalance = ? WHERE EmployeeID = ?
+        ''', (holiday_balance, employee_id))
+
+    conn.commit()
+    conn.close()
+    print("Holiday balances have been calculated and updated for the current year.")
+
+def calculate_all_holiday_balances():
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+
+    # Fetch all employee IDs
+    cursor.execute("SELECT EmployeeID FROM Employees")
+    employee_ids = cursor.fetchall()
+    conn.close()
+
+    # Loop through all employees and calculate holiday balance for each
+    for emp in employee_ids:
+        employee_id = emp[0]
+        print(f"Calculating and updating holiday balance for Employee ID: {employee_id}")
+        calculate_holiday_balance(employee_id)
+
+# Main menu
+def main_menu():
+    while True:
+        print("\nMain Menu")
+        print("1. Add employee")
+        print("2. Modify employee data")
+        print("3. Delete employee")
+        print("4. Show employee list")
+        print("5. Reset employees table")
+        print("6. Close program")
+        
+        choice = input("Choose an option: ")
+        
+        if choice == '1':
+            add_employee_menu()
+        elif choice == '2':
+            modify_employee_data()
+        elif choice == '3':
+            delete_employee()
+        elif choice == '4':
+            show_employee_list()
+        elif choice == '5':
+            reset_employees_table()
+        elif choice == '6':
+            print("Exiting program.")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+# Add employee menu
+def add_employee_menu():
+    print("\nAdd Employee")
+    name = input("Enter employee name: ")
+    role_id = int(input("Enter role ID (1: Manager, 2: HR, 3: Team Leader, 4: Employee): "))
+    start_date = input("Enter start date (YYYY-MM-DD): ")
+    end_date = input("Enter end date (YYYY-MM-DD): ")
+    nationality = input("Enter nationality: ")
+    add_employee(name, role_id, start_date, end_date, nationality)
+
+# Run main menu
+if __name__ == "__main__":
+    print("Calculating and updating holiday balances for all employees...")
+    calculate_all_holiday_balances() 
+    main_menu()

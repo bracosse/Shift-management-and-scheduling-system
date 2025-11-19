@@ -1,0 +1,223 @@
+import sqlite3
+from datetime import datetime
+
+DB_PATH = 'company_schedule.db'  # Updated database name
+
+def report_sick_leave():
+    """Marks an employee as sick on a given date."""
+    try:
+        employee_id = int(input("Enter Employee ID: "))
+        date_str = input("Enter Date (YYYY-MM-DD): ")
+        
+        # Validate date format
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        today = datetime.today().date()
+
+        if date_obj < today:
+            print("Cannot report sick leave for past dates.")
+            return
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Check if shift exists
+        cursor.execute('SELECT ShiftID FROM Shifts WHERE EmployeeID = ? AND Date = ?', (employee_id, date_str))
+        shift = cursor.fetchone()
+
+        if not shift:
+            print(f"No shift found for employee {employee_id} on {date_str}.")
+            return
+
+        shift_id = shift[0]
+
+        # Check if already marked as Sick Leave
+        cursor.execute('SELECT Type FROM Exceptions WHERE EmployeeID = ? AND ExceptionDate = ?', (employee_id, date_str))
+        exception = cursor.fetchone()
+        
+        if exception and exception[0] == 'Sick Leave':
+            print(f"Sick leave already recorded for employee {employee_id} on {date_str}.")
+            return
+
+        # Update shift type to Sick Leave
+        cursor.execute('UPDATE Shifts SET ShiftType = ? WHERE ShiftID = ?', ('Sick Leave', shift_id))
+
+        # Insert into Exceptions table
+        cursor.execute('INSERT INTO Exceptions (EmployeeID, ExceptionDate, Type) VALUES (?, ?, ?)',
+                       (employee_id, date_str, 'Sick Leave'))
+
+        conn.commit()
+        print(f"Sick leave recorded successfully for employee {employee_id} on {date_str}.")
+
+    except ValueError:
+        print("Invalid date format. Please use YYYY-MM-DD.")
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+    finally:
+        conn.close()
+
+def day_on_demand():
+    """Handles Day on Demand requests."""
+    try:
+        employee_id = int(input("Enter Employee ID: "))
+        requested_date = input("Enter Date for Day on Demand (YYYY-MM-DD): ")
+
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if the requested day is already marked as a specific shift type (Day on Demand, Off, Sick Leave, or Annual Leave)
+        cursor.execute('SELECT ShiftType FROM Shifts WHERE EmployeeID = ? AND Date = ?', (employee_id, requested_date))
+        shift = cursor.fetchone()
+
+        if shift:
+            shift_type = shift[0]
+            if shift_type in ["Day on Demand", "Off", "Sick Leave", "Annual Leave"]:
+                print(f"Cannot submit day on demand for {requested_date}. This day is already marked as '{shift_type}'.")
+                return
+
+        # Check the current year
+        current_year = datetime.now().year
+        
+        # Get the employee's current holiday balance and the days on demand taken this year
+        cursor.execute('''SELECT HolidayBalance FROM Employees WHERE EmployeeID = ?''', (employee_id,))
+        holiday_balance = cursor.fetchone()[0]
+        
+        # Check how many days on demand the employee has already taken this year
+        cursor.execute('''SELECT COUNT(*) FROM Holidays WHERE EmployeeID = ? AND Type = "Day on Demand" AND strftime('%Y', HolidayStartDate) = ?''', (employee_id, str(current_year)))
+        days_on_demand_taken = cursor.fetchone()[0]
+        
+        # Check if the employee has enough holiday balance and hasn't used up all their "Day on Demand" days
+        if days_on_demand_taken >= 5:
+            print("No more days on demand available this year.")
+            return
+        
+        if holiday_balance <= 0:
+            print("Insufficient holiday balance to take a day on demand.")
+            return
+        
+        # Update the shift type for the requested day to "Day on Demand"
+        cursor.execute('''UPDATE Shifts SET ShiftType = "Day on Demand" WHERE EmployeeID = ? AND Date = ?''', (employee_id, requested_date))
+        
+        # Subtract 1 day from the employee's holiday balance
+        cursor.execute('''UPDATE Employees SET HolidayBalance = HolidayBalance - 1 WHERE EmployeeID = ?''', (employee_id,))
+        
+        # Record the "Day on Demand" in the Holidays table
+        cursor.execute('''INSERT INTO Holidays (EmployeeID, HolidayStartDate, HolidayEndDate, Type) VALUES (?, ?, ?, "Day on Demand")''', 
+                       (employee_id, requested_date, requested_date))
+        
+        # Commit changes and close the connection
+        conn.commit()
+        conn.close()
+        
+        print("Day on demand granted and shift updated.")
+
+    except ValueError:
+        print("Invalid date format. Please use YYYY-MM-DD.")
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+
+##############################
+def report_sick_leave_gui(employee_id, date_str):
+    try:
+        employee_id = int(employee_id)
+        from datetime import datetime
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        today = datetime.today().date()
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+        if date_obj < today:
+            return "Cannot report sick leave for past dates."
+
+        cursor.execute('SELECT ShiftID FROM Shifts WHERE EmployeeID = ? AND Date = ?', (employee_id, date_str))
+        shift = cursor.fetchone()
+        if not shift:
+            return f"No shift found for employee {employee_id} on {date_str}."
+        shift_id = shift[0]
+
+        cursor.execute('SELECT Type FROM Exceptions WHERE EmployeeID = ? AND ExceptionDate = ?', (employee_id, date_str))
+        exception = cursor.fetchone()
+        if exception and exception[0] == 'Sick Leave':
+            return f"Sick leave already recorded for employee {employee_id} on {date_str}."
+
+        cursor.execute('UPDATE Shifts SET ShiftType = ? WHERE ShiftID = ?', ('Sick Leave', shift_id))
+        cursor.execute('INSERT INTO Exceptions (EmployeeID, ExceptionDate, Type) VALUES (?, ?, ?)',
+                       (employee_id, date_str, 'Sick Leave'))
+
+        conn.commit()
+        return f"Sick leave recorded successfully for employee {employee_id} on {date_str}."
+
+    except ValueError:
+        return "Invalid date format. Please use YYYY-MM-DD."
+    except sqlite3.Error as e:
+        return f"Database error: {e}"
+    finally:
+        conn.close()
+
+def day_on_demand_gui(employee_id, requested_date):
+    try:
+        employee_id = int(employee_id)
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT ShiftType FROM Shifts WHERE EmployeeID = ? AND Date = ?', (employee_id, requested_date))
+        shift = cursor.fetchone()
+        if shift and shift[0] in ["Day on Demand", "Off", "Sick Leave", "Annual Leave"]:
+            return f"Cannot submit day on demand for {requested_date}. Already marked as '{shift[0]}'."
+
+        current_year = datetime.now().year
+        cursor.execute('SELECT HolidayBalance FROM Employees WHERE EmployeeID = ?', (employee_id,))
+        holiday_balance = cursor.fetchone()[0]
+
+        cursor.execute('''SELECT COUNT(*) FROM Holidays WHERE EmployeeID = ? AND Type = "Day on Demand"
+                          AND strftime('%Y', HolidayStartDate) = ?''', (employee_id, str(current_year)))
+        days_on_demand_taken = cursor.fetchone()[0]
+
+        if days_on_demand_taken >= 5:
+            return "No more days on demand available this year."
+
+        if holiday_balance <= 0:
+            return "Insufficient holiday balance."
+
+        cursor.execute('''UPDATE Shifts SET ShiftType = "Day on Demand" WHERE EmployeeID = ? AND Date = ?''',
+                       (employee_id, requested_date))
+        cursor.execute('''UPDATE Employees SET HolidayBalance = HolidayBalance - 1 WHERE EmployeeID = ?''',
+                       (employee_id,))
+        cursor.execute('''INSERT INTO Holidays (EmployeeID, HolidayStartDate, HolidayEndDate, Type)
+                          VALUES (?, ?, ?, "Day on Demand")''',
+                       (employee_id, requested_date, requested_date))
+        conn.commit()
+        return "Day on demand granted and shift updated."
+
+    except ValueError:
+        return "Invalid date format. Please use YYYY-MM-DD."
+    except sqlite3.Error as e:
+        return f"Database error: {e}"
+    finally:
+        conn.close()
+
+def main():
+    while True:
+        print("\n===== Exception MANAGEMENT MENU =====")
+        print("1. Submit an Exception Request (Sick Leave)")
+        print("2. Submit a Day on Demand Request")
+        print("3. Exit")
+        
+        choice = input("Select an option: ")
+        
+        if choice == "1":
+            report_sick_leave()
+        
+        elif choice == "2":
+            day_on_demand()
+        
+        elif choice == "3":
+            print("Bye")
+            break
+        
+        else:
+            print("Invalid choice, please enter 1, 2, or 3.")
+
+# Run the program
+if __name__ == "__main__":
+    main()

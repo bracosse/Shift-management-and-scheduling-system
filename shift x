@@ -1,0 +1,274 @@
+import sqlite3
+from datetime import datetime, timedelta
+import random
+
+# Shift types
+SHIFT_TYPES = ["Morning", "Evening", "Night"]
+SHIFT_HOURS = {"Morning": "08:00-16:00", "Evening": "16:00-00:00", "Night": "00:00-08:00"}
+
+# Function to generate shifts
+def generate_30_day_shifts():
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+
+    # Get employees by roles
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 1 OR RoleID = 2")  # Managers & HR
+    managers_hr = cursor.fetchall()
+
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 3")  # Team Leaders
+    team_leaders = cursor.fetchall()
+
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 4")  # Agents
+    agents = cursor.fetchall()
+
+    today = datetime.today()
+
+    # Schedule Managers & HR (Monday-Friday, 8-4)
+    for emp_id, name, role in managers_hr:
+        for i in range(30):
+            shift_date = today + timedelta(days=i)
+            if shift_date.weekday() < 5:  # Monday-Friday
+                cursor.execute("""
+                INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                VALUES (?, ?, ?, ?, ?)
+                """, (emp_id, shift_date.strftime('%Y-%m-%d'), "Morning", name, "Manager" if role == 1 else "HR"))
+
+    # Schedule Team Leaders & Agents (5 shifts per week, fair distribution)
+    for i in range(30):
+        shift_date = today + timedelta(days=i)
+        available_tl = team_leaders[:]
+        available_agents = agents[:]
+
+        random.shuffle(available_tl)
+        random.shuffle(available_agents)
+
+        # Assign at least 1 TL and 5 Agents per shift
+        for shift in SHIFT_TYPES:
+            if available_tl:
+                emp_id, name, role = available_tl.pop(0)
+                cursor.execute("""
+                INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                VALUES (?, ?, ?, ?, ?)
+                """, (emp_id, shift_date.strftime('%Y-%m-%d'), shift, name, "Team Leader"))
+
+            for _ in range(5):
+                if available_agents:
+                    emp_id, name, role = available_agents.pop(0)
+                    cursor.execute("""
+                    INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                    VALUES (?, ?, ?, ?, ?)
+                    """, (emp_id, shift_date.strftime('%Y-%m-%d'), shift, name, "Agent"))
+
+    conn.commit()
+    conn.close()
+    print("30-day shifts generated successfully.")
+
+# Run the function
+generate_30_day_shifts()
+
+
+
+--------------------------
+
+
+
+
+
+
+import sqlite3
+from datetime import datetime, timedelta
+import random
+
+# Shift types and hours
+SHIFT_TYPES = ["Morning", "Evening", "Night"]
+SHIFT_HOURS = {"Morning": "08:00-16:00", "Evening": "16:00-00:00", "Night": "00:00-08:00"}
+
+# Function to generate 30-day shifts
+def generate_30_day_shifts():
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+
+    # Get employees by roles
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 1 OR RoleID = 2")  # Managers & HR
+    managers_hr = cursor.fetchall()
+
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 3")  # Team Leaders
+    team_leaders = cursor.fetchall()
+
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 4")  # Agents
+    agents = cursor.fetchall()
+
+    today = datetime.today()
+
+    # Schedule Managers & HR (Monday-Friday, 8 AM - 4 PM, weekends off)
+    for emp_id, name, role in managers_hr:
+        for i in range(30):
+            shift_date = today + timedelta(days=i)
+            if shift_date.weekday() < 5:  # Monday-Friday
+                cursor.execute("""
+                INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                VALUES (?, ?, ?, ?, ?)
+                """, (emp_id, shift_date.strftime('%Y-%m-%d'), "Morning", name, "Manager" if role == 1 else "HR"))
+
+    # Schedule Team Leaders & Agents (5 working days per week, 2 days off)
+    all_workers = team_leaders + agents  # Combine both roles for fairness
+    worker_days_off = {emp[0]: [] for emp in all_workers}  # Track days off per employee
+
+    for i in range(30):
+        shift_date = today + timedelta(days=i)
+        random.shuffle(all_workers)  # Shuffle to randomize shifts
+
+        # Track available employees per shift
+        assigned_tl = []
+        assigned_agents = []
+
+        for emp_id, name, role in all_workers:
+            # Ensure employee gets exactly 5 working days per week
+            if len(worker_days_off[emp_id]) < 2 and shift_date.weekday() not in worker_days_off[emp_id]:
+                worker_days_off[emp_id].append(shift_date.weekday())  # Mark as day off
+                cursor.execute("""
+                INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                VALUES (?, ?, ?, ?, ?)
+                """, (emp_id, shift_date.strftime('%Y-%m-%d'), "Off work", name, "Team Leader" if role == 3 else "Agent"))
+                continue  # Skip assigning a shift
+
+            # Assign shifts
+            shift_type = random.choice(SHIFT_TYPES)
+            if role == 3:
+                assigned_tl.append(emp_id)
+            elif role == 4:
+                assigned_agents.append(emp_id)
+
+            cursor.execute("""
+            INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+            VALUES (?, ?, ?, ?, ?)
+            """, (emp_id, shift_date.strftime('%Y-%m-%d'), shift_type, name, "Team Leader" if role == 3 else "Agent"))
+
+        # Ensure at least 1 Team Leader and 5 Agents per shift
+        while len(assigned_tl) < 1 and team_leaders:
+            extra_tl = random.choice(team_leaders)
+            cursor.execute("""
+            INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+            VALUES (?, ?, ?, ?, ?)
+            """, (extra_tl[0], shift_date.strftime('%Y-%m-%d'), random.choice(SHIFT_TYPES), extra_tl[1], "Team Leader"))
+            assigned_tl.append(extra_tl[0])
+
+        while len(assigned_agents) < 5 and agents:
+            extra_agent = random.choice(agents)
+            cursor.execute("""
+            INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+            VALUES (?, ?, ?, ?, ?)
+            """, (extra_agent[0], shift_date.strftime('%Y-%m-%d'), random.choice(SHIFT_TYPES), extra_agent[1], "Agent"))
+            assigned_agents.append(extra_agent[0])
+
+    conn.commit()
+    conn.close()
+    print("30-day shifts generated successfully.")
+
+# Run the function
+generate_30_day_shifts()
+**------------------------------------------
+
+
+import sqlite3
+from datetime import datetime, timedelta
+import calendar
+import random
+
+# Shift types and hours
+SHIFT_TYPES = ["Morning", "Evening", "Night"]
+
+# Function to generate shifts for the current month
+def generate_monthly_shifts():
+    conn = sqlite3.connect('company_schedule.db')
+    cursor = conn.cursor()
+
+    # Get first and last day of the current month
+    today = datetime.today()
+    first_day = datetime(today.year, today.month, 1)
+    last_day = datetime(today.year, today.month, calendar.monthrange(today.year, today.month)[1])
+
+    # Get employees by roles
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 1 OR RoleID = 2")  # Managers & HR
+    managers_hr = cursor.fetchall()
+
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 3")  # Team Leaders
+    team_leaders = cursor.fetchall()
+
+    cursor.execute("SELECT EmployeeID, Name, RoleID FROM Employees WHERE RoleID = 4")  # Agents
+    agents = cursor.fetchall()
+
+    # Clear old shift data for the month before generating new schedules
+    cursor.execute("DELETE FROM Shifts WHERE Date BETWEEN ? AND ?", 
+                   (first_day.strftime('%Y-%m-%d'), last_day.strftime('%Y-%m-%d')))
+    
+    # Schedule Managers & HR (Monday-Friday, 8 AM - 4 PM, weekends off)
+    for emp_id, name, role in managers_hr:
+        for i in range((last_day - first_day).days + 1):
+            shift_date = first_day + timedelta(days=i)
+            if shift_date.weekday() < 5:  # Monday-Friday
+                cursor.execute("""
+                INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                VALUES (?, ?, ?, ?, ?)
+                """, (emp_id, shift_date.strftime('%Y-%m-%d'), "Morning", name, "Manager" if role == 1 else "HR"))
+
+    # Schedule Team Leaders & Agents (5 working days per week, 2 days off)
+    all_workers = team_leaders + agents  # Combine both roles for fairness
+    worker_days_off = {emp[0]: [] for emp in all_workers}  # Track days off per employee
+
+    for i in range((last_day - first_day).days + 1):
+        shift_date = first_day + timedelta(days=i)
+        random.shuffle(all_workers)  # Shuffle to randomize shifts
+
+        # Track available employees per shift
+        assigned_tl = []
+        assigned_agents = []
+
+        for emp_id, name, role in all_workers:
+            # Ensure each employee gets exactly 5 working days per week
+            if len(worker_days_off[emp_id]) < 2 and shift_date.weekday() not in worker_days_off[emp_id]:
+                worker_days_off[emp_id].append(shift_date.weekday())  # Mark as day off
+                cursor.execute("""
+                INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+                VALUES (?, ?, ?, ?, ?)
+                """, (emp_id, shift_date.strftime('%Y-%m-%d'), "Off work", name, "Team Leader" if role == 3 else "Agent"))
+                continue  # Skip assigning a shift
+
+            # Assign shifts
+            shift_type = random.choice(SHIFT_TYPES)
+            if role == 3:
+                assigned_tl.append(emp_id)
+            elif role == 4:
+                assigned_agents.append(emp_id)
+
+            cursor.execute("""
+            INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+            VALUES (?, ?, ?, ?, ?)
+            """, (emp_id, shift_date.strftime('%Y-%m-%d'), shift_type, name, "Team Leader" if role == 3 else "Agent"))
+
+        # Ensure at least 1 Team Leader and 5 Agents per shift
+        while len(assigned_tl) < 1 and team_leaders:
+            extra_tl = random.choice(team_leaders)
+            cursor.execute("""
+            INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+            VALUES (?, ?, ?, ?, ?)
+            """, (extra_tl[0], shift_date.strftime('%Y-%m-%d'), random.choice(SHIFT_TYPES), extra_tl[1], "Team Leader"))
+            assigned_tl.append(extra_tl[0])
+
+        while len(assigned_agents) < 5 and agents:
+            extra_agent = random.choice(agents)
+            cursor.execute("""
+            INSERT INTO Shifts (EmployeeID, Date, ShiftType, EmployeeName, Role)
+            VALUES (?, ?, ?, ?, ?)
+            """, (extra_agent[0], shift_date.strftime('%Y-%m-%d'), random.choice(SHIFT_TYPES), extra_agent[1], "Agent"))
+            assigned_agents.append(extra_agent[0])
+
+    conn.commit()
+    conn.close()
+    print(f"Shifts generated from {first_day.strftime('%Y-%m-%d')} to {last_day.strftime('%Y-%m-%d')}. ✅")
+
+# Run the function
+generate_monthly_shifts()
+
+
+---------------

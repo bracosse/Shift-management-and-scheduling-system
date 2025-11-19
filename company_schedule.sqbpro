@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/habbo/OneDrive/Bureau/prj/company_schedule.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure pragmas browser query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="125"/><column_width id="3" width="1997"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,9:mainEmployees"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="Employees" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="114"/><column index="2" value="139"/><column index="3" value="69"/><column index="4" value="92"/><column index="5" value="91"/><column index="6" value="104"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">-- Insert roles
+--INSERT INTO Roles (RoleName) VALUES ('Manager');
+--INSERT INTO Roles (RoleName) VALUES ('HR');
+--INSERT INTO Roles (RoleName) VALUES ('Team Leader');
+--INSERT INTO Roles (RoleName) VALUES ('Employee');
+
+-- Insert 1 Manager
+/*INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Manager1', 1, '2025-01-01', '2025-12-31', 'USA');
+
+-- Insert 2 HRs
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('HR1', 2, '2025-01-01', '2025-12-31', 'USA');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('HR2', 2, '2025-01-01', '2025-12-31', 'UK');
+
+-- Insert 5 Team Leaders
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Team Leader1', 3, '2025-01-01', '2025-12-31', 'USA');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Team Leader2', 3, '2025-01-01', '2025-12-31', 'Canada');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Team Leader3', 3, '2025-01-01', '2025-12-31', 'UK');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Team Leader4', 3, '2025-01-01', '2025-12-31', 'Australia');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Team Leader5', 3, '2025-01-01', '2025-12-31', 'India');
+
+-- Insert 25 Employees with randomized names, start dates, end dates, and nationalities
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Alice Green', 4, '2025-01-05', '2025-12-31', 'USA');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Bob Smith', 4, '2025-02-10', '2025-11-30', 'Canada');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Charlie Johnson', 4, '2025-03-15', '2025-12-31', 'UK');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Diana Clark', 4, '2025-04-01', '2025-09-30', 'Australia');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Edward Harris', 4, '2025-05-22', '2025-12-31', 'Germany');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Fayla Kim', 4, '2025-06-09', '2025-12-31', 'France');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('George Brown', 4, '2025-07-01', '2025-11-15', 'Spain');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Hannah Lee', 4, '2025-08-13', '2025-12-31', 'Italy');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Ishmael Wong', 4, '2025-09-05', '2025-12-31', 'Portugal');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Jackie Martinez', 4, '2025-10-01', '2025-12-31', 'Netherlands');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Kenny Wilson', 4, '2025-11-01', '2025-12-31', 'Belgium');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Lena Walker', 4, '2025-12-01', '2025-12-31', 'Ireland');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Marcus Rodriguez', 4, '2025-01-14', '2025-06-30', 'Sweden');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Nina Evans', 4, '2025-02-18', '2025-07-15', 'Norway');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Oscar Torres', 4, '2025-03-25', '2025-09-01', 'Finland');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Penny Grant', 4, '2025-04-11', '2025-09-30', 'Denmark');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Quincy Phillips', 4, '2025-05-19', '2025-10-01', 'Switzerland');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Rachel Harris', 4, '2025-06-25', '2025-12-31', 'Austria');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Sammy Adams', 4, '2025-07-10', '2025-12-31', 'Poland');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Tina Lewis', 4, '2025-08-16', '2025-12-31', 'Russia');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Umar Patel', 4, '2025-09-01', '2025-12-31', 'China');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Vera Carter', 4, '2025-10-10', '2025-12-31', 'India');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Warren Scott', 4, '2025-11-01', '2025-12-31', 'Japan');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Xena Moore', 4, '2025-12-01', '2025-12-31', 'South Korea');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Yasir Khan', 4, '2025-01-02', '2025-12-31', 'Brazil');
+
+INSERT INTO Employees (Name, RoleID, StartDate, EndDate, Nationality) 
+VALUES ('Zoe Mitchell', 4, '2025-02-06', '2025-12-31', 'Mexico');*/
+SELECT * from Employees order by RoleID
+
+DELETE FROM Employees WHERE Name IN ('HR1', 'HR2');
+
+</sql><current_tab id="0"/></tab_sql></sqlb_project>
