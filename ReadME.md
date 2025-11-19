@@ -1,0 +1,4 @@
+This is my MA thesis project.
+A shift management system that efficiently handles employee scheduling for a 24/7 operation. It manages employees, roles, holidays, and exceptions, ensuring fair distribution of morning, evening and night shifts while respecting labor laws. The system automatically generates monthly schedules, tracks project-specific and general shifts, and allows updates for holidays or emergency leaves. 
+It uses SQLite for data storage and includes features for calculating work hours, managing days off, and maintaining equitable workloads among employees.
+The application is designed to be extendable into a web-based interface.
